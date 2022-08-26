@@ -6,7 +6,6 @@
 import numpy as np
 
 from math import pi, cos, sin
-
 from pyvascular.vessel import Vessel
 from pyvascular.node import Node, Coordinate
 
@@ -32,11 +31,24 @@ class Network:
         self.num_dimensions = num_dimensions
         self.config = config
         self.set_properties()
+        #self.boundary_conditions = list()
 
     def generate_artery(self):
 
         def generate_root(x_projection, y_projection):
-            self.nodes[0] = Node(0, Coordinate(0, 0, 0))
+            x_extent = self.max_vessel_length
+            bsf = self.config["bifurcation_scaling_factor"]
+            iba = self.config["initial_bifurcation_angle"]
+            lsf = self.config["length_scaling_factor"]
+            for i in range(1, self.num_levels):
+
+                bifurcation_angle = iba * pow(bsf, i)
+                length_factor = pow(lsf, i)
+
+                x_extent = x_extent + self.max_vessel_length * length_factor * cos(
+                    pi * bifurcation_angle / 180)
+                
+            self.nodes[0] = Node(0, Coordinate(-x_extent, 0, 0))
             self.nodes[0].add_child([1])
             self.nodes[0].add_out_vessel([0])
             x_1 = self.nodes[0].coordinate.x + x_projection
@@ -44,8 +56,11 @@ class Network:
             self.nodes[1] = Node(1, Coordinate(x_1, y_1, 0))
             self.nodes[1].add_parent([0])
             self.nodes[1].add_in_vessel([0])
+            
+            self.vessels[0] = Vessel(0, Coordinate(-x_extent,0,0), Coordinate(x_1, y_1, 0), self.max_vessel_length, self.max_vessel_radius)
+            self.vessels[0].add_nodes([0, 1])
 
-        def generate_body(level, x_projection, y_projection):
+        def generate_body(level, x_projection, y_projection, length, radius):
             for node in range(pow(2, level - 1), pow(2, level)):  # parallel
                 child1_idx = node * 2
                 child1_x = self.nodes[node].coordinate.x + x_projection
@@ -69,6 +84,11 @@ class Network:
                 self.nodes[node].add_out_vessel([vessel_1, vessel_2])
                 self.nodes[child1_idx].add_in_vessel([vessel_1])
                 self.nodes[child2_idx].add_in_vessel([vessel_2])
+                
+                self.vessels[vessel_1] = Vessel(vessel_1, self.nodes[node].coordinate, Coordinate(child1_x,child1_y,0), length, radius)
+                self.vessels[vessel_1].add_nodes([node, child1_idx])
+                self.vessels[vessel_2] = Vessel(vessel_2, self.nodes[node].coordinate, Coordinate(child2_x,child2_y,0), length, radius)
+                self.vessels[vessel_2].add_nodes([node, child2_idx])
 
         generate_root(self.max_vessel_length, 0)
 
@@ -76,12 +96,14 @@ class Network:
             lsf = self.config["length_scaling_factor"]
             iba = self.config["initial_bifurcation_angle"]
             bsf = self.config["bifurcation_scaling_factor"]
+            rsf = self.config["radius_scaling_factor"]
 
             length = self.max_vessel_length * pow(lsf, level)
+            radius = self.max_vessel_radius * pow(rsf, level)
             bifurcation_angle = iba * pow(bsf, level)
             x_projection = length * cos(pi * bifurcation_angle / 180)
             y_projection = length * sin(pi * bifurcation_angle / 180)
-            generate_body(level, x_projection, y_projection)
+            generate_body(level, x_projection, y_projection, length, radius)
 
     def generate_vein(self):
 
@@ -97,7 +119,7 @@ class Network:
 
                 x_extent = x_extent + self.max_vessel_length * length_factor * cos(
                     pi * bifurcation_angle / 180)
-            x_extent = x_extent * 2
+            #x_extent = x_extent * 2
             sink_node_idx = self.num_nodes - 1
 
 
@@ -114,8 +136,11 @@ class Network:
             self.nodes[sink_node_idx - 1].add_child([sink_node_idx])
             self.nodes[sink_node_idx - 1].add_out_vessel(
                 [self.num_vessels - 1])
+            
+            self.vessels[self.num_vessels-1] = Vessel(self.num_vessels-1, Coordinate(x_extent, 0, 0), Coordinate(x, y, 0), self.max_vessel_length, self.max_vessel_radius)
+            self.vessels[self.num_vessels-1].add_nodes([sink_node_idx - 1, sink_node_idx])
 
-        def generate_body(level, x_projection, y_projection):
+        def generate_body(level, x_projection, y_projection, length, radius):
             for node in range(pow(2, level - 1), pow(2, level)):  # parallel
                 node_idx = self.num_nodes - node - 1
 
@@ -141,6 +166,12 @@ class Network:
                 self.nodes[node_idx].add_in_vessel([vessel_1, vessel_2])
                 self.nodes[parent1_idx].add_out_vessel([vessel_1])
                 self.nodes[parent2_idx].add_out_vessel([vessel_2])
+                
+                self.vessels[vessel_1] = Vessel(vessel_1, self.nodes[node_idx].coordinate, Coordinate(parent1_x,parent1_y,0), length, radius)
+                self.vessels[vessel_1].add_nodes([parent1_idx, node_idx])
+                self.vessels[vessel_2] = Vessel(vessel_2, self.nodes[node_idx].coordinate, Coordinate(parent2_x,parent2_y,0), length, radius)
+                self.vessels[vessel_2].add_nodes([parent2_idx, node_idx])
+
 
         def generate_border():
             for node in range(pow(2, self.num_levels - 2),
@@ -167,12 +198,14 @@ class Network:
             lsf = self.config["length_scaling_factor"]
             iba = self.config["initial_bifurcation_angle"]
             bsf = self.config["bifurcation_scaling_factor"]
+            rsf = self.config["radius_scaling_factor"]
 
             length = self.max_vessel_length * pow(lsf, level)
+            radius = self.max_vessel_radius * pow(rsf, level)
             bifurcation_angle = iba * pow(bsf, level)
             x_projection = length * cos(pi * bifurcation_angle / 180)
             y_projection = length * sin(pi * bifurcation_angle / 180)
-            generate_body(level, x_projection, y_projection)
+            generate_body(level, x_projection, y_projection, length, radius)
 
         generate_border()
 
@@ -185,7 +218,14 @@ class Network:
 
     def get_num_nodes(self):
         return 3 * pow(2, self.num_levels - 1)
-
+    
+    # def add_boundary_conditions(self, indecies: list):
+    #     self.boundary_conditions.extend(indecies)
+    
+    def get_output_flow_rate(self):
+        output_flow_rate = pow(2, self.num_levels-1) * np.pi * pow(self.config["min_vessel_radius"], 2)
+        return output_flow_rate
+    
     def set_properties(self):
         self.num_nodes = self.get_num_nodes()
         self.num_vessels = self.get_num_vessels()
@@ -196,7 +236,7 @@ class Network:
             self.config["radius_scaling_factor"], self.num_levels - 1)
         self.max_vessel_length = self.config["min_vessel_length"] / pow(
             self.config["length_scaling_factor"], self.num_levels - 1)
-
+        
     def set_config(self, config: dict):
         self.config = config
         self.set_properties()
