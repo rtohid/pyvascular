@@ -4,8 +4,8 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
 import numpy as np
-
 from math import pi, cos, sin
+
 from pyvascular.vessel import Vessel
 from pyvascular.node import Node, Coordinate
 
@@ -31,7 +31,6 @@ class Network:
         self.num_dimensions = num_dimensions
         self.config = config
         self.set_properties()
-        #self.boundary_conditions = list()
 
     def generate_artery(self):
 
@@ -119,7 +118,6 @@ class Network:
 
                 x_extent = x_extent + self.max_vessel_length * length_factor * cos(
                     pi * bifurcation_angle / 180)
-            #x_extent = x_extent * 2
             sink_node_idx = self.num_nodes - 1
 
 
@@ -218,9 +216,6 @@ class Network:
 
     def get_num_nodes(self):
         return 3 * pow(2, self.num_levels - 1)
-    
-    # def add_boundary_conditions(self, indecies: list):
-    #     self.boundary_conditions.extend(indecies)
     
     def get_output_flow_rate(self):
         output_flow_rate = pow(2, self.num_levels-1) * np.pi * pow(self.config["min_vessel_radius"], 2)
