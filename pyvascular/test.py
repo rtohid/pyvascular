@@ -16,9 +16,10 @@ from pyvascular.conductance import assemble_matrix, assemble_rhs_vector, solve_f
 # Begin Total Project Timing
 total_time_start = MPI.Wtime()
 
+
 # create network and generate the vessels
 start_time = MPI.Wtime()
-numLevels = 15
+numLevels = 3
 numDims = 2
 print("Building Network: " + str(numLevels) + " Levels")
 network = Network(numLevels, numDims, 1)
@@ -26,6 +27,10 @@ network.generate()
 print("Number of Vessels in Network: " + str(network.get_num_vessels()))
 end_time = MPI.Wtime()
 print("Generate Network time: " + str(end_time-start_time))
+vessels = network.vessels
+for i in range(len(vessels)):
+    print(vessels[i])
+
 
 # assemble the conductance array
 start_time = MPI.Wtime()
@@ -38,17 +43,20 @@ conductance_array = assemble_matrix(network)
 end_time = MPI.Wtime()
 print("Assemble Conductance Matrix time: " + str(end_time-start_time))
 
+
 # assemble the RHS pressure vector
 start_time = MPI.Wtime()
 rhs_vector = assemble_rhs_vector(network)
 end_time = MPI.Wtime()
 print("Assemble RHS vector time: " + str(end_time-start_time))
 
-# solve the linear system Ax=b
+
+# solve the linear system Ax=b to get pressure at each junction
 start_time = MPI.Wtime()
 pressureVector = spsolve(conductance_array, rhs_vector)
 end_time = MPI.Wtime()
 print("Solve Pressures time: " + str(end_time-start_time))
+
 
 # assemble the Poiseuille equations matrix and solve for flow rates
 start_time = MPI.Wtime()
@@ -56,6 +64,7 @@ flow_array = solve_flows(network, pressureVector)
 end_time = MPI.Wtime()
 print("Solve Flow Rates time: " + str(end_time-start_time))
 #print(flow_array)
+
 
 # End Total Project Timing
 total_time_end = MPI.Wtime()

@@ -2,6 +2,9 @@
 import numpy as np
 import scipy.sparse as ss
 
+
+# Function: assemble the conductance matrix
+# based on Poiseuille's equation
 def assemble_matrix(network):
     vessels = network.vessels
     numNodes = network.get_num_nodes()
@@ -31,6 +34,8 @@ def assemble_matrix(network):
     return output
 
 
+# Function: assemble the right-side solution vector containing the boundary conditions
+# assuming zero net flow at internal junctions
 def assemble_rhs_vector(network):
     numNodes = network.get_num_nodes()
     rhs_vector = np.zeros(numNodes)
@@ -40,6 +45,8 @@ def assemble_rhs_vector(network):
     return rhs_vector
 
 
+# Function: reassemble matrix containing vessel conductances and take dot product with
+#               pressure solution vector to get solved flow rates of each vessel
 def solve_flows(network, pressureSolutionVector):
     numVessels = network.get_num_vessels()
     numNodes = network.get_num_nodes()
@@ -55,6 +62,7 @@ def solve_flows(network, pressureSolutionVector):
     return flow_array
 
 
+# Function: confirm vessel flow rates are within accepted computational accuracy
 def check_flows_are_correct(flows):
     for i in range(0, len(flows)):
         power = 1 / flows[i]

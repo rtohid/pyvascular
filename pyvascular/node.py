@@ -5,17 +5,21 @@
 
 from os import linesep
 
+# class to store Cartesian Coordinate (x,y,z) of vessel start and end nodes
 class Coordinate:
 
+    # constructor: initializes attributes when object is created from class 
     def __init__(self, x, y, z=0) -> None:
         self.x = x
         self.y = y
         self.z = z
 
+    # descriptor: represents class objects as a string
     def __str__(self):
         return str((self.x, self.y, self.z))
 
 
+# class to define Node data (not used -> moved to vessel based construction)
 class Node:
 
     def __init__(self, idx, coordinate) -> None:

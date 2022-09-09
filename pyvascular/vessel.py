@@ -5,8 +5,13 @@
 
 from os import linesep
 from math import pi, exp
+
+# class to describe Vessel data
+# takes input parameters for each vessel:
+#       index, start coordinate, end coordinate, length, and radius 
 class Vessel:
 
+    # constructor: initializes attributes when object is created from class 
     def __init__(self, idx: int, start: int, end: int, length: float, radius: float) -> None:
         self.idx = idx
         self.length = length
@@ -15,13 +20,16 @@ class Vessel:
         self.radius = radius
         self.neighbors = list()
         self.nodes = list()
-
+        
+    # method: add connected vessels to list
     def add_neighbor(self, indecies: list):
         self.neighbors.extend(indecies)
         
+    # method: add start and end node to list
     def add_nodes(self, indecies: list):
         self.nodes.extend(indecies)
-        
+       
+    # method: return the conductance of the vessel 
     def get_conductance(self):
         def viscosity():
             diameter = 2 * self.radius * 1e3
@@ -32,7 +40,9 @@ class Vessel:
             return 0
         else:
             return pi * pow(self.radius, 4) / (8 * self.length * mu)
-        
+     
+    # descriptor: represents class objects as a string
+    # to be used as checkpoint verification    
     def __str__(self):
         text = f"Vessel {self.idx}:" + linesep
         text = text + f"Start: {self.start}" + linesep

@@ -7,7 +7,7 @@ import numpy as np
 from math import pi, cos, sin
 
 from pyvascular.vessel import Vessel
-from pyvascular.node import Node, Coordinate
+from pyvascular.node import Coordinate
 
 default_config = {
     "min_vessel_length": 0.055,
@@ -19,8 +19,13 @@ default_config = {
 }
 
 
+# class to describe and build the vessel network
+# methods create arteries and veins stored as Vessel class objects in vessels ndarray
+# input parameters:
+#           num_levels (generations), num_dimensions, num_ranks (if parallel), config (default unless specified)
 class Network:
 
+    # constructor: initializes attributes when object is created from class 
     def __init__(self,
                  num_levels: int,
                  num_dimensions: int,
@@ -32,8 +37,10 @@ class Network:
         self.config = config
         self.set_properties()
 
+    # method: generate arterial tree
     def generate_artery(self):
 
+        # sub-method: generate the root artery (Vessel 0) at negative maximum x displacement
         def generate_root(x_projection, y_projection):
             x_extent = self.max_vessel_length
             bsf = self.config["bifurcation_scaling_factor"]
@@ -47,50 +54,35 @@ class Network:
                 x_extent = x_extent + self.max_vessel_length * length_factor * cos(
                     pi * bifurcation_angle / 180)
                 
-            self.nodes[0] = Node(0, Coordinate(-x_extent, 0, 0))
-            self.nodes[0].add_child([1])
-            self.nodes[0].add_out_vessel([0])
-            x_1 = self.nodes[0].coordinate.x + x_projection
-            y_1 = self.nodes[0].coordinate.y + y_projection
-            self.nodes[1] = Node(1, Coordinate(x_1, y_1, 0))
-            self.nodes[1].add_parent([0])
-            self.nodes[1].add_in_vessel([0])
+            x_1 = -x_extent + x_projection
+            y_1 = y_projection
             
             self.vessels[0] = Vessel(0, Coordinate(-x_extent,0,0), Coordinate(x_1, y_1, 0), self.max_vessel_length, self.max_vessel_radius)
             self.vessels[0].add_nodes([0, 1])
 
+        # sub-method: fractally generates arterial bodies for each parent vessel, starting at root
+        #               - each call creates 2 daughter vessels starting from parent vessel (from previous level)
+        #               - body: structure containing all progeny vessels of root vessel
+        #               - sub-body: structure consisting of the 2 daughter vessels of each parent
         def generate_body(level, x_projection, y_projection, length, radius):
             for node in range(pow(2, level - 1), pow(2, level)):  # parallel
-                child1_idx = node * 2
-                child1_x = self.nodes[node].coordinate.x + x_projection
-                child1_y = self.nodes[node].coordinate.y + y_projection
-                self.nodes[child1_idx] = Node(
-                    child1_idx, Coordinate(child1_x, child1_y, 0))
-                self.nodes[child1_idx].add_parent([node])
-
-                child2_idx = child1_idx + 1
-                child2_x = self.nodes[node].coordinate.x + x_projection
-                child2_y = self.nodes[node].coordinate.y - y_projection
-                self.nodes[child2_idx] = Node(
-                    child2_idx, Coordinate(child2_x, child2_y, 0))
-                self.nodes[child2_idx].add_parent([node])
-
-                self.nodes[node].add_child([child1_idx, child2_idx])
-
-                vessel_1 = node * 2 - 1
-                vessel_2 = node * 2
-
-                self.nodes[node].add_out_vessel([vessel_1, vessel_2])
-                self.nodes[child1_idx].add_in_vessel([vessel_1])
-                self.nodes[child2_idx].add_in_vessel([vessel_2])
+                child1_idx = node * 2 - 1
+                child2_idx = node * 2
+                child1_x = self.vessels[node-1].end.x + x_projection
+                child1_y = self.vessels[node-1].end.y + y_projection
+                child2_x = self.vessels[node-1].end.x + x_projection
+                child2_y = self.vessels[node-1].end.y - y_projection
                 
-                self.vessels[vessel_1] = Vessel(vessel_1, self.nodes[node].coordinate, Coordinate(child1_x,child1_y,0), length, radius)
-                self.vessels[vessel_1].add_nodes([node, child1_idx])
-                self.vessels[vessel_2] = Vessel(vessel_2, self.nodes[node].coordinate, Coordinate(child2_x,child2_y,0), length, radius)
-                self.vessels[vessel_2].add_nodes([node, child2_idx])
+                self.vessels[child1_idx] = Vessel(child1_idx, self.vessels[node-1].end, Coordinate(child1_x,child1_y,0), length, radius)
+                self.vessels[child1_idx].add_nodes([node, child2_idx])
+                self.vessels[child2_idx] = Vessel(child2_idx, self.vessels[node-1].end, Coordinate(child2_x,child2_y,0), length, radius)
+                self.vessels[child2_idx].add_nodes([node, child2_idx+1])
 
+        # generate root artery with specified projections
         generate_root(self.max_vessel_length, 0)
 
+        # loop to calculate x and y projections for each artery sub-body, with scaled parameters
+        # calls generate_body() method with
         for level in range(1, self.num_levels):
             lsf = self.config["length_scaling_factor"]
             iba = self.config["initial_bifurcation_angle"]
@@ -104,8 +96,11 @@ class Network:
             y_projection = length * sin(pi * bifurcation_angle / 180)
             generate_body(level, x_projection, y_projection, length, radius)
 
+    # method: creates veinous tree of vascular network
+    # repeats steps of generate_artery() for veinous side of network
     def generate_vein(self):
 
+        # sub-method: generates root vein (vessel #(num_vessels-1)) at maximum displacement
         def generate_root(x_projection, y_projection):
             x_extent = self.max_vessel_length
             bsf = self.config["bifurcation_scaling_factor"]
@@ -118,77 +113,29 @@ class Network:
 
                 x_extent = x_extent + self.max_vessel_length * length_factor * cos(
                     pi * bifurcation_angle / 180)
-            sink_node_idx = self.num_nodes - 1
-
-
-            self.nodes[sink_node_idx] = Node(sink_node_idx,
-                                             Coordinate(x_extent, 0, 0))
-            self.nodes[sink_node_idx].add_parent([sink_node_idx - 1])
-
-            self.nodes[sink_node_idx].add_in_vessel([self.num_vessels - 1])
-
-            x = self.nodes[sink_node_idx].coordinate.x - x_projection
-            y = self.nodes[sink_node_idx].coordinate.y + y_projection
-            self.nodes[sink_node_idx - 1] = Node(sink_node_idx - 1,
-                                                 Coordinate(x, y, 0))
-            self.nodes[sink_node_idx - 1].add_child([sink_node_idx])
-            self.nodes[sink_node_idx - 1].add_out_vessel(
-                [self.num_vessels - 1])
             
-            self.vessels[self.num_vessels-1] = Vessel(self.num_vessels-1, Coordinate(x_extent, 0, 0), Coordinate(x, y, 0), self.max_vessel_length, self.max_vessel_radius)
-            self.vessels[self.num_vessels-1].add_nodes([sink_node_idx - 1, sink_node_idx])
+            sink_vessel_idx = self.num_nodes - 1
+            self.vessels[self.num_vessels-1] = Vessel(self.num_vessels-1, Coordinate(x_extent, 0, 0), Coordinate(x_extent-x_projection, 0, 0), self.max_vessel_length, self.max_vessel_radius)
+            self.vessels[self.num_vessels-1].add_nodes([sink_vessel_idx-1, sink_vessel_idx])
 
+        # sub-method: generates veinous sub-bodies to make up vein body
+        # repeats steps of arterial side, but building in reverse from the final vessel
         def generate_body(level, x_projection, y_projection, length, radius):
             for node in range(pow(2, level - 1), pow(2, level)):  # parallel
                 node_idx = self.num_nodes - node - 1
-
-                parent1_idx = self.num_nodes - node * 2 - 2
-                parent1_x = self.nodes[node_idx].coordinate.x - x_projection
-                parent1_y = self.nodes[node_idx].coordinate.y + y_projection
-                self.nodes[parent1_idx] = Node(
-                    parent1_idx, Coordinate(parent1_x, parent1_y, 0))
-                self.nodes[parent1_idx].add_child([node_idx])
-
-                parent2_idx = self.num_nodes - node * 2 - 1
-                parent2_x = self.nodes[node_idx].coordinate.x - x_projection
-                parent2_y = self.nodes[node_idx].coordinate.y - y_projection
-                self.nodes[parent2_idx] = Node(
-                    parent2_idx, Coordinate(parent2_x, parent2_y, 0))
-                self.nodes[parent2_idx].add_child([node_idx])
-
-                self.nodes[node_idx].add_parent([parent1_idx, parent2_idx])
-
-                vessel_1 = self.num_vessels - node * 2 - 1
-                vessel_2 = self.num_vessels - node * 2
-
-                self.nodes[node_idx].add_in_vessel([vessel_1, vessel_2])
-                self.nodes[parent1_idx].add_out_vessel([vessel_1])
-                self.nodes[parent2_idx].add_out_vessel([vessel_2])
+                parent_index = self.num_vessels - node
                 
-                self.vessels[vessel_1] = Vessel(vessel_1, self.nodes[node_idx].coordinate, Coordinate(parent1_x,parent1_y,0), length, radius)
-                self.vessels[vessel_1].add_nodes([parent1_idx, node_idx])
-                self.vessels[vessel_2] = Vessel(vessel_2, self.nodes[node_idx].coordinate, Coordinate(parent2_x,parent2_y,0), length, radius)
-                self.vessels[vessel_2].add_nodes([parent2_idx, node_idx])
-
-
-        def generate_border():
-            for node in range(pow(2, self.num_levels - 2),
-                              pow(2, self.num_levels - 1)):  # parallel
-                node_idx = self.num_nodes - node - 1
-
-                parent1_idx = self.num_nodes - node * 2 - 2
-                self.nodes[parent1_idx].add_child([node_idx])
-
-                parent2_idx = self.num_nodes - node * 2 - 1
-                self.nodes[parent2_idx].add_child([node_idx])
-
-                self.nodes[node_idx].add_parent([parent1_idx, parent2_idx])
-                vessel_1 = self.num_vessels - node * 2 - 1
-                vessel_2 = self.num_vessels - node * 2
-
-                self.nodes[node_idx].add_in_vessel([vessel_1, vessel_2])
-                self.nodes[parent1_idx].add_out_vessel([vessel_1])
-                self.nodes[parent2_idx].add_out_vessel([vessel_2])
+                vessel1_idx = self.num_vessels - node * 2 - 1
+                vessel2_idx = self.num_vessels - node * 2
+                
+                parent_x = self.vessels[parent_index].end.x - x_projection
+                parent1_y = self.vessels[parent_index].end.y + y_projection
+                parent2_y = self.vessels[parent_index].end.y - y_projection
+                
+                self.vessels[vessel1_idx] = Vessel(vessel1_idx, self.vessels[parent_index].end, Coordinate(parent_x,parent1_y,0), length, radius)
+                self.vessels[vessel1_idx].add_nodes([(self.num_nodes-node*2-2), node_idx])
+                self.vessels[vessel2_idx] = Vessel(vessel2_idx, self.vessels[parent_index].end, Coordinate(parent_x,parent2_y,0), length, radius)
+                self.vessels[vessel2_idx].add_nodes([(self.num_nodes-node*2-1), node_idx])
 
         generate_root(self.max_vessel_length, 0)
 
@@ -205,38 +152,42 @@ class Network:
             y_projection = length * sin(pi * bifurcation_angle / 180)
             generate_body(level, x_projection, y_projection, length, radius)
 
-        generate_border()
-
+    # method: generate entire vascular network
     def generate(self):
         self.generate_artery()
         self.generate_vein()
 
+    # method: return total number of vessels in network
     def get_num_vessels(self):
         return pow(2, self.num_levels + 1) - 2
 
+    # method: return total number of nodes in network
     def get_num_nodes(self):
         return 3 * pow(2, self.num_levels - 1)
     
+    # method: return the volumetric flow rate for the last vessel (root vein)
     def get_output_flow_rate(self):
         output_flow_rate = pow(2, self.num_levels-1) * np.pi * pow(self.config["min_vessel_radius"], 2)
         return output_flow_rate
     
+    # method: set network properties to variables that can be accessed by other methods
     def set_properties(self):
         self.num_nodes = self.get_num_nodes()
         self.num_vessels = self.get_num_vessels()
         self.vessels = np.ndarray(self.num_vessels, dtype=Vessel)
-        self.nodes = np.ndarray(self.num_nodes, dtype=Node)
 
         self.max_vessel_radius = self.config["min_vessel_radius"] / pow(
             self.config["radius_scaling_factor"], self.num_levels - 1)
         self.max_vessel_length = self.config["min_vessel_length"] / pow(
             self.config["length_scaling_factor"], self.num_levels - 1)
         
+    # method: set the configurations if not using default
     def set_config(self, config: dict):
         self.config = config
         self.set_properties()
 
 
+# function: returns new set of configrations if not default
 def make_configs(min_vessel_length=0.055,
                  min_vessel_radius=0.0025,
                  length_scaling_factor=0.8,
