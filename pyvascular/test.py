@@ -4,6 +4,7 @@
 # if python generates ModuleNotFoundError, paste following in command line
 # export PYTHONPATH="${PYTHONPATH}:/Users/notmax/Desktop/VascularFiles/pyvascular_test/pyvascular/"
 
+from os import linesep
 from mpi4py import MPI
 from scipy.sparse.linalg import spsolve
 import tracemalloc
@@ -21,15 +22,16 @@ total_time_start = MPI.Wtime()
 start_time = MPI.Wtime()
 numLevels = 3
 numDims = 2
-print("Building Network: " + str(numLevels) + " Levels")
-network = Network(numLevels, numDims, 1)
+print("\nBuilding Network: " + str(numLevels) + " Levels")
+network = Network(numLevels, numDims)
 network.generate()
+print("Number of Dimension: " + str(numDims))
 print("Number of Vessels in Network: " + str(network.get_num_vessels()))
 end_time = MPI.Wtime()
 print("Generate Network time: " + str(end_time-start_time))
 vessels = network.vessels
-for i in range(len(vessels)):
-    print(vessels[i])
+# for i in range(len(vessels)):
+#     print(vessels[i])
 
 
 # assemble the conductance array

@@ -68,14 +68,20 @@ class Network:
             for node in range(pow(2, level - 1), pow(2, level)):  # parallel
                 child1_idx = node * 2 - 1
                 child2_idx = node * 2
-                child1_x = self.vessels[node-1].end.x + x_projection
+                child_x = self.vessels[node-1].end.x + x_projection
                 child1_y = self.vessels[node-1].end.y + y_projection
-                child2_x = self.vessels[node-1].end.x + x_projection
                 child2_y = self.vessels[node-1].end.y - y_projection
                 
-                self.vessels[child1_idx] = Vessel(child1_idx, self.vessels[node-1].end, Coordinate(child1_x,child1_y,0), length, radius)
+                if ((node % 2) or self.num_dimensions == 2):
+                    child1_end = Coordinate(child_x, child1_y, 0)
+                    child2_end = Coordinate(child_x, child2_y, 0)
+                else:
+                    child1_end = Coordinate(child_x, 0, child1_y)
+                    child2_end = Coordinate(child_x, 0, child2_y)
+                
+                self.vessels[child1_idx] = Vessel(child1_idx, self.vessels[node-1].end, child1_end, length, radius)
                 self.vessels[child1_idx].add_nodes([node, child2_idx])
-                self.vessels[child2_idx] = Vessel(child2_idx, self.vessels[node-1].end, Coordinate(child2_x,child2_y,0), length, radius)
+                self.vessels[child2_idx] = Vessel(child2_idx, self.vessels[node-1].end, child2_end, length, radius)
                 self.vessels[child2_idx].add_nodes([node, child2_idx+1])
 
         # generate root artery with specified projections
@@ -132,9 +138,16 @@ class Network:
                 parent1_y = self.vessels[parent_index].end.y + y_projection
                 parent2_y = self.vessels[parent_index].end.y - y_projection
                 
-                self.vessels[vessel1_idx] = Vessel(vessel1_idx, self.vessels[parent_index].end, Coordinate(parent_x,parent1_y,0), length, radius)
+                if ((node % 2) or self.num_dimensions == 2):
+                    child1_end = Coordinate(parent_x, parent1_y, 0)
+                    child2_end = Coordinate(parent_x, parent2_y, 0)
+                else:
+                    child1_end = Coordinate(parent_x, 0, parent1_y)
+                    child2_end = Coordinate(parent_x, 0, parent2_y)
+                
+                self.vessels[vessel1_idx] = Vessel(vessel1_idx, self.vessels[parent_index].end, child1_end, length, radius)
                 self.vessels[vessel1_idx].add_nodes([(self.num_nodes-node*2-2), node_idx])
-                self.vessels[vessel2_idx] = Vessel(vessel2_idx, self.vessels[parent_index].end, Coordinate(parent_x,parent2_y,0), length, radius)
+                self.vessels[vessel2_idx] = Vessel(vessel2_idx, self.vessels[parent_index].end, child2_end, length, radius)
                 self.vessels[vessel2_idx].add_nodes([(self.num_nodes-node*2-1), node_idx])
 
         generate_root(self.max_vessel_length, 0)
@@ -171,6 +184,7 @@ class Network:
         return output_flow_rate
     
     # method: set network properties to variables that can be accessed by other methods
+    #           if network is 3D, change bifurcation configs to 3D
     def set_properties(self):
         self.num_nodes = self.get_num_nodes()
         self.num_vessels = self.get_num_vessels()
@@ -180,6 +194,10 @@ class Network:
             self.config["radius_scaling_factor"], self.num_levels - 1)
         self.max_vessel_length = self.config["min_vessel_length"] / pow(
             self.config["length_scaling_factor"], self.num_levels - 1)
+        
+        if (self.num_dimensions == 3):
+            self.config["initial_bifurcation_angle"] = 37.47
+            self.config["bifurcation_scaling_factor"] = 0.88
         
     # method: set the configurations if not using default
     def set_config(self, config: dict):
