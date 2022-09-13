@@ -2,12 +2,15 @@
 # updating to monitor time and memory usage
 
 # if python generates ModuleNotFoundError, paste following in command line
-# export PYTHONPATH="${PYTHONPATH}:/Users/notmax/Desktop/VascularFiles/pyvascular_test/pyvascular/"
+# export PYTHONPATH="${PYTHONPATH}:/Users/${USER}/Desktop/VascularFiles/pyvascular_test/pyvascular/"
 
+from fileinput import filename
+from operator import ne
 from os import linesep
 from mpi4py import MPI
 from scipy.sparse.linalg import spsolve
 import tracemalloc
+from pyvascular.h5_IO import export_all
 
 from pyvascular.network import Network
 from pyvascular.conductance import assemble_matrix, assemble_rhs_vector, solve_flows
@@ -29,9 +32,6 @@ print("Number of Dimension: " + str(numDims))
 print("Number of Vessels in Network: " + str(network.get_num_vessels()))
 end_time = MPI.Wtime()
 print("Generate Network time: " + str(end_time-start_time))
-vessels = network.vessels
-# for i in range(len(vessels)):
-#     print(vessels[i])
 
 
 # assemble the conductance array
@@ -65,9 +65,13 @@ start_time = MPI.Wtime()
 flow_array = solve_flows(network, pressureVector)
 end_time = MPI.Wtime()
 print("Solve Flow Rates time: " + str(end_time-start_time))
-#print(flow_array)
 
 
 # End Total Project Timing
 total_time_end = MPI.Wtime()
 print("Total Project Time:", (total_time_end-total_time_start))
+
+
+# export all to h5 file
+filename = 'pyvascular_test.h5'
+export_all(network, conductance_array, rhs_vector, pressureVector, flow_array, filename)
