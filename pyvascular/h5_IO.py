@@ -113,19 +113,3 @@ def export_all(network, cond_matrix, rhs_vector, pressure_vector, flow_array, fi
     export_rhs_vector(rhs_vector, filename)
     export_pressures(pressure_vector, filename)
     export_flows(flow_array, filename)
-
-# Test output    
-# network = Network(4, 3)
-# network.generate()
-# filename = 'pyvascular_test.h5'
-# delete_file_if_exists(filename)
-# export_vessel_data(network, filename)
-# conductance_array = assemble_matrix(network)
-# export_conductance(conductance_array, filename)
-# rhs_vector = assemble_rhs_vector(network)
-# export_rhs_vector(rhs_vector, filename)
-# pressureVector = spsolve(conductance_array, rhs_vector)
-# export_pressures(pressureVector, filename)
-# flow_array = solve_flows(network, pressureVector)
-# export_flows(flow_array, filename)
-# export_all(network, conductance_array, rhs_vector, pressureVector, flow_array, filename)
