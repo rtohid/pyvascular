@@ -13,6 +13,13 @@ class Coordinate:
         self.x = x
         self.y = y
         self.z = z
+        
+    def add(self, x1, y1, z1):
+        x2 = self.x + x1
+        y2 = self.y + y1
+        z2 = self.z + z1
+        return Coordinate(x2, y2, z2)
+        
 
     # descriptor: represents class objects as a string
     def __str__(self):

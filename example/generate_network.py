@@ -6,7 +6,7 @@
 from pyvascular.network import Network
 from pyvascular.visuals import plot_network
 
-vascular_network = Network(3, 2, 1)
+vascular_network = Network(5, 3, 1)
 vascular_network.generate()
 
-plot_network(vascular_network, save=1)
+plot_network(vascular_network)

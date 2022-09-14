@@ -4,8 +4,6 @@
 # if python generates ModuleNotFoundError, paste following in command line
 # export PYTHONPATH="${PYTHONPATH}:/Users/${USER}/Desktop/VascularFiles/pyvascular_test/pyvascular/"
 
-from fileinput import filename
-from operator import ne
 from os import linesep
 from mpi4py import MPI
 from scipy.sparse.linalg import spsolve
@@ -14,6 +12,7 @@ from pyvascular.h5_IO import export_all
 
 from pyvascular.network import Network
 from pyvascular.conductance import assemble_matrix, assemble_rhs_vector, solve_flows
+from pyvascular.visuals import plot_network
 
 #--------------------- MAIN ---------------------#
 
@@ -74,4 +73,7 @@ print("Total Project Time:", (total_time_end-total_time_start))
 
 # export all to h5 file
 filename = 'pyvascular_test.h5'
-export_all(network, conductance_array, rhs_vector, pressureVector, flow_array, filename)
+# export_all(network, conductance_array, rhs_vector, pressureVector, flow_array, filename)
+
+# plot network for visualization
+# plot_network(network)

@@ -68,16 +68,14 @@ class Network:
             for node in range(pow(2, level - 1), pow(2, level)):  # parallel
                 child1_idx = node * 2 - 1
                 child2_idx = node * 2
-                child_x = self.vessels[node-1].end.x + x_projection
-                child1_y = self.vessels[node-1].end.y + y_projection
-                child2_y = self.vessels[node-1].end.y - y_projection
+                parent_end = self.vessels[node-1].end
                 
-                if ((node % 2) or self.num_dimensions == 2):
-                    child1_end = Coordinate(child_x, child1_y, 0)
-                    child2_end = Coordinate(child_x, child2_y, 0)
+                if ((level % 2) or self.num_dimensions == 2):
+                    child1_end = parent_end.add(x_projection, y_projection, 0)
+                    child2_end = parent_end.add(x_projection, -y_projection, 0)
                 else:
-                    child1_end = Coordinate(child_x, 0, child1_y)
-                    child2_end = Coordinate(child_x, 0, child2_y)
+                    child1_end = parent_end.add(x_projection, 0, y_projection)
+                    child2_end = parent_end.add(x_projection, 0, -y_projection)
                 
                 self.vessels[child1_idx] = Vessel(child1_idx, self.vessels[node-1].end, child1_end, length, radius)
                 self.vessels[child1_idx].add_nodes([node, child2_idx])
@@ -130,20 +128,16 @@ class Network:
             for node in range(pow(2, level - 1), pow(2, level)):  # parallel
                 node_idx = self.num_nodes - node - 1
                 parent_index = self.num_vessels - node
-                
                 vessel1_idx = self.num_vessels - node * 2 - 1
                 vessel2_idx = self.num_vessels - node * 2
+                parent_end = (self.vessels[parent_index].end)
                 
-                parent_x = self.vessels[parent_index].end.x - x_projection
-                parent1_y = self.vessels[parent_index].end.y + y_projection
-                parent2_y = self.vessels[parent_index].end.y - y_projection
-                
-                if ((node % 2) or self.num_dimensions == 2):
-                    child1_end = Coordinate(parent_x, parent1_y, 0)
-                    child2_end = Coordinate(parent_x, parent2_y, 0)
+                if ((level % 2) or self.num_dimensions == 2):
+                    child1_end = parent_end.add(-x_projection, y_projection, 0)
+                    child2_end = parent_end.add(-x_projection, -y_projection, 0)
                 else:
-                    child1_end = Coordinate(parent_x, 0, parent1_y)
-                    child2_end = Coordinate(parent_x, 0, parent2_y)
+                    child1_end = parent_end.add(-x_projection, 0, y_projection)
+                    child2_end = parent_end.add(-x_projection, 0, -y_projection)
                 
                 self.vessels[vessel1_idx] = Vessel(vessel1_idx, self.vessels[parent_index].end, child1_end, length, radius)
                 self.vessels[vessel1_idx].add_nodes([(self.num_nodes-node*2-2), node_idx])
